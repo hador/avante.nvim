@@ -569,6 +569,11 @@ M._defaults = {
     --- Whether to automatically open files and navigate to lines when ACP agent makes edits
     ---@type boolean
     acp_follow_agent_locations = true,
+    --- Filter diagnostics by severity when using @diagnostics
+    --- Available severities: "ERROR", "WARN", "INFO", "HINT"
+    --- Set to nil to include all severities
+    ---@type string[] | nil
+    diagnostics_severities = nil, -- Default: include all severities
   },
   prompt_logger = { -- logs prompts to disk (timestamped, for replay/debugging)
     enabled = true, -- toggle logging entirely

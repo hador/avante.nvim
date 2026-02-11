@@ -2575,6 +2575,14 @@ function Sidebar:get_generate_prompts_options(request, cb)
     else
       diagnostics = Utils.lsp.get_diagnostics(self.code.bufnr)
     end
+    -- Filter by severity if configured
+    if diagnostics and Config.behaviour.diagnostics_severities then
+      local allowed = {}
+      for _, sev in ipairs(Config.behaviour.diagnostics_severities) do
+        allowed[sev] = true
+      end
+      diagnostics = vim.tbl_filter(function(d) return allowed[d.severity] end, diagnostics)
+    end
   end
 
   local history_messages = self:get_history_messages_for_api()
