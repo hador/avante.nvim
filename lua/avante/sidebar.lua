@@ -195,8 +195,9 @@ function Sidebar:open(opts)
     vim.g.avante_login = true
   end
 
+  -- Skip ACP connection if new_chat will be called (it will handle it)
   local acp_provider = Config.acp_providers[Config.provider]
-  if acp_provider then self:handle_submit("") end
+  if acp_provider and not opts.new_chat then self:handle_submit("") end
 
   return self
 end
@@ -2252,6 +2253,10 @@ function Sidebar:new_chat(args, cb)
   end)
   if cb then cb(args) end
   vim.schedule(function() self:create_todos_container() end)
+  
+  -- Establish new ACP session for the new chat
+  local acp_provider = Config.acp_providers[Config.provider]
+  if acp_provider then self:handle_submit("") end
 end
 
 local debounced_save_history = Utils.debounce(
