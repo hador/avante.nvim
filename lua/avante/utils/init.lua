@@ -1066,7 +1066,10 @@ function M.extract_mentions(content)
     enable_project_context = true
     new_content = content:gsub("@codebase", "")
   end
-  if content:match("@diagnostics") then enable_diagnostics = true end
+  if content:match("@diagnostics") then
+    enable_diagnostics = true
+    new_content = new_content:gsub("@diagnostics", "")
+  end
   return {
     new_content = new_content,
     enable_project_context = enable_project_context,
