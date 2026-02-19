@@ -1306,7 +1306,7 @@ function M._stream_acp(opts)
               vim.api.nvim_list_bufs()
             )
             for _, buf in ipairs(buffers) do
-              vim.api.nvim_buf_call(buf, function() vim.cmd("edit") end)
+              vim.api.nvim_buf_call(buf, function() vim.cmd("edit!") end)
             end
             callback(nil)
             return
