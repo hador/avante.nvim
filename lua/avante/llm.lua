@@ -22,6 +22,42 @@ local M = {}
 
 M.CANCEL_PATTERN = "AvanteLLMEscape"
 
+local _debounced_nav = Utils.debounce(function(sidebar, location)
+  if not sidebar:is_open() then return end
+
+  local code_winid = nil
+  if sidebar.code.winid and sidebar.code.winid ~= 0 and api.nvim_win_is_valid(sidebar.code.winid) then
+    code_winid = sidebar.code.winid
+  else
+    for _, winid in ipairs(api.nvim_tabpage_list_wins(0)) do
+      if api.nvim_win_is_valid(winid) and not sidebar:is_sidebar_winid(winid) then
+        code_winid = winid
+        break
+      end
+    end
+  end
+
+  if not code_winid then return end
+
+  local now = uv.now()
+  if now - (vim.g.avante_last_auto_nav or 0) < 2000 then return end
+
+  local abs_path = Utils.join_paths(Utils.get_project_root(), location.path)
+  local bufnr = vim.fn.bufnr(abs_path, true)
+  if not bufnr or bufnr == -1 then return end
+
+  if not api.nvim_buf_is_loaded(bufnr) then pcall(vim.fn.bufload, bufnr) end
+
+  local ok = pcall(api.nvim_win_set_buf, code_winid, bufnr)
+  if not ok then return end
+
+  local target_line = math.min(location.line or 1, api.nvim_buf_line_count(bufnr))
+  pcall(api.nvim_win_set_cursor, code_winid, { target_line, 0 })
+  pcall(api.nvim_win_call, code_winid, function() vim.cmd("normal! zz") end)
+
+  vim.g.avante_last_auto_nav = now
+end, 1000)
+
 ------------------------------Prompt and type------------------------------
 
 local group = api.nvim_create_augroup("avante_llm", { clear = true })
@@ -1094,58 +1130,10 @@ function M._stream_acp(opts)
               and update.locations
               and #update.locations > 0
             then
-              vim.schedule(function()
-                if not sidebar:is_open() then return end
-
-                -- Find a valid code window (non-sidebar window)
-                local code_winid = nil
-                if sidebar.code.winid and sidebar.code.winid ~= 0 and api.nvim_win_is_valid(sidebar.code.winid) then
-                  code_winid = sidebar.code.winid
-                else
-                  -- Find first non-sidebar window in the current tab
-                  local all_wins = api.nvim_tabpage_list_wins(0)
-                  for _, winid in ipairs(all_wins) do
-                    if api.nvim_win_is_valid(winid) and not sidebar:is_sidebar_winid(winid) then
-                      code_winid = winid
-                      break
-                    end
-                  end
-                end
-
-                if not code_winid then return end
-
-                local now = uv.now()
-                local last_auto_nav = vim.g.avante_last_auto_nav or 0
-                local grace_period = 2000
-
-                -- Check if user navigated manually recently
-                if now - last_auto_nav < grace_period then return end
-
-                -- Only follow first location to avoid rapid jumping
-                local location = update.locations[1]
-                if not location or not location.path then return end
-
-                local abs_path = Utils.join_paths(Utils.get_project_root(), location.path)
-                local bufnr = vim.fn.bufnr(abs_path, true)
-
-                if not bufnr or bufnr == -1 then return end
-
-                if not api.nvim_buf_is_loaded(bufnr) then pcall(vim.fn.bufload, bufnr) end
-
-                local ok = pcall(api.nvim_win_set_buf, code_winid, bufnr)
-                if not ok then return end
-
-                local line = location.line or 1
-                local line_count = api.nvim_buf_line_count(bufnr)
-                local target_line = math.min(line, line_count)
-
-                pcall(api.nvim_win_set_cursor, code_winid, { target_line, 0 })
-                pcall(api.nvim_win_call, code_winid, function()
-                  vim.cmd("normal! zz") -- Center line in viewport
-                end)
-
-                vim.g.avante_last_auto_nav = now
-              end)
+              local location = update.locations[1]
+              if location and location.path then
+                vim.schedule(function() _debounced_nav(sidebar, location) end)
+              end
             end
           end
 
