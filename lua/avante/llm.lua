@@ -46,10 +46,11 @@ local _debounced_nav = Utils.debounce(function(sidebar, location)
   local bufnr = vim.fn.bufnr(abs_path, true)
   if not bufnr or bufnr == -1 then return end
 
-  if not api.nvim_buf_is_loaded(bufnr) then pcall(vim.fn.bufload, bufnr) end
-
   local ok = pcall(api.nvim_win_set_buf, code_winid, bufnr)
   if not ok then return end
+
+  -- run edit! in the window context to fire BufRead/BufEnter so plugins (e.g. gitsigns) attach correctly
+  pcall(api.nvim_win_call, code_winid, function() vim.cmd("edit!") end)
 
   local target_line = math.min(location.line or 1, api.nvim_buf_line_count(bufnr))
   pcall(api.nvim_win_set_cursor, code_winid, { target_line, 0 })
