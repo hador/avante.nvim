@@ -1310,6 +1310,7 @@ function M._stream_acp(opts)
           end
           callback("Failed to write file: " .. abs_path)
         end,
+        on_notification = acp_provider.on_notification,
       },
     })
     acp_client = ACPClient:new(acp_config)
