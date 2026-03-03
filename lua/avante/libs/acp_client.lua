@@ -212,6 +212,7 @@ ACPClient.ERROR_CODES = {
 ---@field on_read_file? fun(path: string, line: integer | nil, limit: integer | nil, callback: fun(content: string), error_callback: fun(message: string, code: integer|nil)): nil
 ---@field on_write_file? fun(path: string, content: string, callback: fun(error: string|nil)): nil
 ---@field on_error? fun(error: table)
+---@field on_notification? fun(method: string, params: table, message_id: number|nil)
 
 ---@class ACPConfig
 ---@field transport_type "stdio" | "websocket" | "tcp"
@@ -584,7 +585,11 @@ function ACPClient:_handle_notification(message_id, method, params)
   elseif method == "fs/write_text_file" then
     self:_handle_write_text_file(message_id, params)
   else
-    vim.notify("Unknown notification method: " .. method, vim.log.levels.WARN)
+    if self.config.handlers and self.config.handlers.on_notification then
+      vim.schedule(function() self.config.handlers.on_notification(method, params, message_id) end)
+    else
+      vim.notify("Unknown notification method: " .. method, vim.log.levels.WARN)
+    end
   end
 end
 
